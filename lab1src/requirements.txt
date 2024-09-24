@@ -1,0 +1,5 @@
+requests
+streamlit
+openai
+cohere
+langdetect
