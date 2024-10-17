@@ -1,0 +1,11 @@
+torch 
+torchaudio
+torchvision
+tensorflow 
+setuptools
+wheel
+tokenizers
+transformers
+streamlit
+python-dotenv
+pyyaml
