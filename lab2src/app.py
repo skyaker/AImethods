@@ -4,7 +4,7 @@ from utils.config_loader import load_generation_params
 from typing import Optional
 
 # Загрузка конфигурации и модели
-generation_params: dict = load_generation_params('config.yaml')
+generation_params: dict = load_generation_params('config.yaml', "generation_params_medium")
 model, tokenizer, device = load_model()
 
 st.title("Генератор текста")
@@ -27,4 +27,11 @@ if topic:
         st.write("Генерация введения...")
         introduction: str = generate_text(prompt, model, tokenizer, device, generation_params, text_length=400)
         st.subheader("Введение:")
+        st.write(introduction)
+
+    if st.button("Сгенерировать заключение"):
+        prompt: str = f"Заключение на тему: {topic}"
+        st.write("Генерация заключения...")
+        introduction: str = generate_text(prompt, model, tokenizer, device, generation_params, text_length=400)
+        st.subheader("Заключение:")
         st.write(introduction)
