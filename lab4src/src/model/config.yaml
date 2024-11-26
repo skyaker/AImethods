@@ -1,0 +1,8 @@
+model:
+  use_resource: 'balanced'
+  llama:
+    model_path: "meta-llama/Llama-2-13b-chat-hf"
+    tokenizer: "meta-llama/Llama-2-13b-chat-hf"
+  gpt:
+    model_path: "EleutherAI/gpt-neo-125m"
+    tokenizer: "EleutherAI/gpt-neo-125m"
