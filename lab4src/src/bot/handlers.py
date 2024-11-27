@@ -5,7 +5,7 @@ from aiogram.fsm.state import State, StatesGroup
 from aiogram.types import ReplyKeyboardRemove
 from src.bot.bot import bot
 from src.bot.keyboards import *
-from src.model.model import generate_training_program, generate_diet_program, load_model
+from src.model.model import generate_training_program, generate_diet_program
 
 router = Router()
 
@@ -47,16 +47,11 @@ async def return_to_main_menu_through_state(message: types.Message, state: FSMCo
 @router.message(TrainingProgramStates.choose_model_state)
 async def choose_model(message: types.Message, state: FSMContext):
   model = message.text
-  if model not in ["GPT", "LLaMA"]:
+  if model not in ["FALCON", "LLaMA"]:
     await message.answer("Пожалуйста, выберите модель из предложенных.", reply_markup=get_model_keyboard())
     return
 
   await state.update_data(model=model)
-
-  if model not in loaded_models and model == "LLaMA":
-    print("\ncheck pipeline llama\n")
-    model_pipeline = await load_model(model)
-    loaded_models[model] = model_pipeline
 
   await message.answer("Чем могу помочь?", reply_markup=get_greeting_keyboard())
   await state.set_state(TrainingProgramStates.choose_service_state)
@@ -94,7 +89,7 @@ async def user_parameters(message: types.Message, state: FSMContext):
   params = message.text
 
   try:
-    parts = [part.strip() for part in params.split(",")]
+    parts: list = [part.strip() for part in params.split(",")]
 
     age = int(parts[0].split()[0])
     if age <= 0:
@@ -123,11 +118,17 @@ async def user_parameters(message: types.Message, state: FSMContext):
       "Некорректный ввод. Пожалуйста, введите данные в формате: возраст, вес, уровень. Например: 25, 70, Новичок.",
       reply_markup=ReplyKeyboardRemove()
     )
-    await state.set_state(TrainingProgramStates.choose_goal_state)
+    await state.set_state(TrainingProgramStates.user_parameters_state)
     return
 
 
 async def retry_generate(message: types.Message, state: FSMContext, generator_function, state_to_set):
+  """
+  Called for more attempts
+
+  :param generator_function: function depending on type of service (train/diet) generation
+  :param state_to_set: state that after confirmation user goes to
+  """
   data = await state.get_data()
   model = data.get("model")
   goal = data.get("goal")
@@ -138,7 +139,7 @@ async def retry_generate(message: types.Message, state: FSMContext, generator_fu
 
   await message.answer(f"Подождите пожалуйста...", reply_markup=ReplyKeyboardRemove())
 
-  response = await generator_function(loaded_models, model, goal, parameters)
+  response = await generator_function(model, goal, parameters)
   await message.answer(f"Новый результат:\n{response}\n\n Устраивает ли вас ответ?", reply_markup=get_yes_or_no_keyboard())
   await state.set_state(state_to_set)
 
@@ -156,7 +157,7 @@ async def generate_train(message: types.Message, state: FSMContext):
     parameters = f"Возраст: {age}, Вес: {weight}, Уровень: {level}"
 
     await message.answer(f"Подождите пожалуйста...", reply_markup=ReplyKeyboardRemove())
-    response = await generate_training_program(loaded_models, model, goal, parameters)
+    response = await generate_training_program(model, goal, parameters)
 
     await message.answer(f"Сгенерированная тренировка:\n{response}\n\n Устраивает ли вас ответ?", reply_markup=get_yes_or_no_keyboard())
     await state.set_state(TrainingProgramStates.confirm_train_state)
@@ -186,7 +187,7 @@ async def generate_diet(message: types.Message, state: FSMContext):
     parameters = f"Возраст: {age}, Вес: {weight}, Уровень: {level}"
 
     await message.answer(f"Подождите пожалуйста...", reply_markup=ReplyKeyboardRemove())
-    response = await generate_diet_program(loaded_models, model, goal, parameters)
+    response = await generate_diet_program(model, goal, parameters)
 
     await message.answer(f"Сгенерированный план питания: {response}\n\n Устраивает ли вас ответ?", reply_markup=get_yes_or_no_keyboard())
 

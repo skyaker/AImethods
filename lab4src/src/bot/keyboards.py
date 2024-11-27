@@ -3,7 +3,7 @@ from aiogram.types import ReplyKeyboardMarkup, KeyboardButton
 def get_model_keyboard():
   """Greetings keyboard"""
   keyboard = [
-    [KeyboardButton(text = "GPT")],
+    [KeyboardButton(text = "FALCON")],
     [KeyboardButton(text = "LLaMA")]
   ]
   return ReplyKeyboardMarkup(keyboard=keyboard, resize_keyboard=True)
@@ -38,16 +38,8 @@ def get_yes_or_no_keyboard():
   keyboard = ReplyKeyboardMarkup(keyboard=keyboard, resize_keyboard=True)
   return keyboard
 
-def get_menu_previous_section():
-  """Goal keyboard"""
-  keyboard = [
-    [KeyboardButton(text = "Вернуться в главное меню")],
-    [KeyboardButton(text = "Перейти к предыдущему вопросу")]
-  ]
-  keyboard = ReplyKeyboardMarkup(keyboard=keyboard, resize_keyboard=True)
-  return keyboard
-
 def get_menu_keyboard():
+  """Only menu button keyboard"""
   keyboard = [
     [KeyboardButton(text = "Вернуться в главное меню")]
   ]

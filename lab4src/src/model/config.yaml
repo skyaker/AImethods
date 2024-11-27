@@ -1,8 +1,19 @@
 model:
-  use_resource: 'balanced'
+  falcon:
+    full_name: "falcon-7b-instruct.Q4_0.gguf"
   llama:
-    model_path: "meta-llama/Llama-2-13b-chat-hf"
-    tokenizer: "meta-llama/Llama-2-13b-chat-hf"
-  gpt:
-    model_path: "EleutherAI/gpt-neo-125m"
-    tokenizer: "EleutherAI/gpt-neo-125m"
+    model_path: "meta-llama/Meta-Llama-3-8B-Instruct"
+
+falcon_config:
+  max_tokens: 1024 # Maximum number of tokens allowed in the response. Defaults to 20.
+  temperature: 0.7 # Controls randomness of the generations
+  top_p: 0.9 # Fraction of the most likely next words to sample from
+  top_k: 50 # Limits the sampling to the top_k most likely tokens
+  repetition_penalty: 1.2 # Penalizes repeated tokens to reduce redundancy
+
+llama_config:
+  max_tokens: 500 # Maximum number of tokens allowed in the response. Defaults to 20.
+  temperature: 0.7 # Controls randomness of the generations
+  top_p: 0.9 # Fraction of the most likely next words to sample from
+  frequency_penalty: 0.0 # Penalizes new tokens based on their existing frequency in the text so far
+  presence_penalty: 0.6 # Punishes the repetition of words based on their frequency

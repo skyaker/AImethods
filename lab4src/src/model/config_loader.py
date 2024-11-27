@@ -6,7 +6,7 @@ CONFIG_FILE = BASE_DIR / "config.yaml"
 
 def load_config():
   """
-  yaml configuration load
+  yaml configuration load with relative path
   """
   with CONFIG_FILE.open("r") as f:
     config = yaml.safe_load(f)

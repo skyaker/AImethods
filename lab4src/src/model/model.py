@@ -3,139 +3,148 @@ from gpt4all import GPT4All
 from huggingface_hub import InferenceClient
 from googletrans import Translator
 from dotenv import load_dotenv
-import torch
 import os
 import sys
 import re
+
+current_dir = os.path.dirname(os.path.abspath(__file__))
+model_path = os.path.join(current_dir, "gguf_models/")
 
 sys.path.append(os.path.dirname(__file__))
 from config_loader import load_config
 
 config = load_config()
-
 translator = Translator()
-
 load_dotenv()
 
-token: str = os.getenv('HUGGING_FACE_SECOND_TOKEN')
+HF_TOKEN: str = os.getenv('HUGGING_FACE_SECOND_TOKEN')
 
 
-async def load_model(model_name: str):
-  if model_name == "GPT":
-    model_path = "EleutherAI/gpt-neo-125M"
-  elif model_name == "LLaMA":
-    model_path = "meta-llama/Llama-3.1-8B-Instruct"
-  else:
-    raise ValueError("Неизвестная модель")
+async def translate_result_to_ru(result: str):
+  sentences = re.split(r'(?<=[.!?])\s+', result)
+  translated_sentences = []
 
-  print(f"Загружаем модель {model_name}...")
-  
-  tokenizer = AutoTokenizer.from_pretrained(model_path, token=token)
+  for sentence in sentences:
+    try:
+      if sentence.strip():
+        translated_sentence = translator.translate(sentence, src='en', dest='ru').text
+        translated_sentences.append(translated_sentence)
+    except Exception as e:
+      translated_sentences.append("")
 
-  if tokenizer.pad_token_id is None:
-    tokenizer.pad_token_id = tokenizer.eos_token_id
+  result_ru = " ".join(translated_sentences)
 
-  device = config["model"]["use_resource"]
-
-  model = AutoModelForCausalLM.from_pretrained(
-    model_path,
-    device_map=device,
-    torch_dtype=torch.float16,
-    token=token
-  )
-  
-  return pipeline("text-generation", model=model, device_map="auto")
+  return result_ru
 
 
-async def generate_training_program(loaded_models: dict, model: str, goal: str, parameters: str) -> str:
-  if model == "GPT": 
-    model = GPT4All("Meta-Llama-3-8B-Instruct.Q4_0.gguf")
-    prompt = f"Составь тренировочную программу для {goal}.\nПараметры пользователя: {parameters}\n"
-    prompt_en = translator.translate(prompt, src='ru', dest='en').text
-    print(f"\n{prompt_en}\n\n")
+async def generate_by_falcon(prompt: str):
+  """
+  Start answer generation with falcon
 
-    with model.chat_session():
-      print("Генерация началась\n")
+  :param prompt: request to model
+  """
+  MODEL_NAME = config["model"]["falcon"]["full_name"]
 
-      result = str(model.generate(prompt_en, max_tokens=1024))
+  model = GPT4All(MODEL_NAME, model_path=model_path)
 
-      sentences = re.split(r'(?<=[.!?])\s+', result)
-      translated_sentences = []
+  prompt_en = translator.translate(prompt, src='ru', dest='en').text
 
-      for sentence in sentences:
-        try:
-          if sentence.strip():
-            translated_sentence = translator.translate(sentence, src='en', dest='ru').text
-            translated_sentences.append(translated_sentence)
-        except Exception as e:
-          translated_sentences.append("")
+  with model.chat_session():
+    print("\nFALCON GENERATION STARTED\n")
 
-      result_ru = " ".join(translated_sentences)
-      return result_ru
+    result = str(model.generate(
+      prompt_en,
+      max_tokens=config["falcon_config"]["max_tokens"],
+      temp=config["falcon_config"]["temperature"],
+      top_p=config["falcon_config"]["top_p"],
+      top_k=config["falcon_config"]["top_k"],
+      repeat_penalty=config["falcon_config"]["repetition_penalty"]
+    ))
 
-  elif model == "LLaMA":
-    model_pipeline = loaded_models[model]
-    prompt = f"Составь тренировочную программу для {goal}.\nПараметры пользователя: {parameters}\n"
-    
-    model_pipeline.tokenizer.pad_token_id = model_pipeline.tokenizer.eos_token_id
+    print("\nFALCON GENERATION COMPLETED\n")
 
-    result = model_pipeline(
-      prompt, 
-      max_length=500, 
-      truncation=True, 
-      num_return_sequences=1)
-
-    sentences = re.split(r'(?<=[.!?])\s+', result[0]["generated_text"])
-    translated_sentences = []
-
-    for sentence in sentences:
-      try:
-        if sentence.strip():
-          translated_sentence = translator.translate(sentence, src='en', dest='ru').text
-          translated_sentences.append(translated_sentence)
-      except Exception as e:
-        translated_sentences.append("[Ошибка перевода]")
-
-    result_ru = " ".join(translated_sentences)
+    result_ru: str = await translate_result_to_ru(result)
     return result_ru
-  
 
-async def generate_diet_program(loaded_models: dict, model: str, goal: str, parameters: str) -> str:
+
+async def generate_by_llama(prompt: str):
+  """
+  Start answer generation with llama
+
+  :param prompt: request to model
+  """
+  client = InferenceClient(api_key=HF_TOKEN)
+
+  MODEL_PATH = config["model"]["llama"]["model_path"]
+
+  prompt_en = translator.translate(prompt, src='ru', dest='en').text
+
+  messages = [
+    {
+      "role": "user",
+      "content": prompt_en
+    }
+  ]
+
+  print("\nLLAMA GENERATION STARTED\n")
+
+  completion = client.chat.completions.create(
+    model=MODEL_PATH, 
+    messages=messages, 
+    max_tokens=config["llama_config"]["max_tokens"],
+    temperature=config["llama_config"]["temperature"],
+    top_p=config["llama_config"]["top_p"],
+    frequency_penalty=config["llama_config"]["frequency_penalty"],
+    presence_penalty=config["llama_config"]["presence_penalty"]
+  )
+
+  print("\nLLAMA GENERATION COMPLETED\n")
+
+  result = completion.choices[0].message["content"]
+
+  cleaned_result = result.strip()
+
+  formatted_result = cleaned_result.replace("\\n", "\n")
+
+  result_ru: str = await translate_result_to_ru(formatted_result)
+  return result_ru
+
+
+async def generate_training_program(model: str, goal: str, parameters: str) -> str:
+  """
+  Getting training program
+
+  :param model: the name of model
+  :param goal: the goal user training for
+  :param parameters: user's age, weight, experience
+  """
+  prompt = f"Составь тренировочную программу для {goal}.\nПараметры пользователя: {parameters}\n"
+  if model == "FALCON": 
+    result = await generate_by_falcon(prompt)
+
+    return result
+  elif model == "LLaMA":
+    result = await generate_by_llama(prompt)
+
+    return result
+    
+
+async def generate_diet_program(model: str, goal: str, parameters: str) -> str:
+  """
+  Getting diet program
+
+  :param model: the name of model
+  :param goal: the goal user training for
+  :param parameters: user's age, weight, experience
+  """
   prompt: str = f"Составь рацион для {goal}.\nПараметры пользователя: {parameters}\n"
 
-  if model == "GPT": 
-    model = GPT4All("Meta-Llama-3-8B-Instruct.Q4_0.gguf")
+  if model == "FALCON": 
+    result = await generate_by_falcon(prompt)
 
-    prompt_en = translator.translate(prompt, src='ru', dest='en').text
-
-    with model.chat_session():
-      print("Генерация началась\n")
-
-      result = str(model.generate(prompt_en, max_tokens=1024))
-
-      sentences = re.split(r'(?<=[.!?])\s+', result)
-      translated_sentences = []
-
-      for sentence in sentences:
-        try:
-          if sentence.strip():
-            translated_sentence = translator.translate(sentence, src='en', dest='ru').text
-            translated_sentences.append(translated_sentence)
-        except Exception as e:
-          translated_sentences.append("")
-
-      result_ru = " ".join(translated_sentences)
-      return result_ru
+    return result
     
   elif model == "LLaMA":
-    model_pipeline = loaded_models[model]
-    
-    model_pipeline.tokenizer.pad_token_id = model_pipeline.tokenizer.eos_token_id
+    result = await generate_by_llama(prompt)
 
-    result = model_pipeline(
-      prompt, 
-      max_length=500, 
-      truncation=True, 
-      num_return_sequences=1)
-
-    return result[0]["generated_text"]
+    return result
