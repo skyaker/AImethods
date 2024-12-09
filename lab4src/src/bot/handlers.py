@@ -139,7 +139,7 @@ async def retry_generate(message: types.Message, state: FSMContext, generator_fu
 
   await message.answer(f"Подождите пожалуйста...", reply_markup=ReplyKeyboardRemove())
 
-  response = await generator_function(model, goal, parameters)
+  response = generator_function(model, goal, parameters)
   await message.answer(f"Новый результат:\n{response}\n\n Устраивает ли вас ответ?", reply_markup=get_yes_or_no_keyboard())
   await state.set_state(state_to_set)
 
@@ -157,7 +157,7 @@ async def generate_train(message: types.Message, state: FSMContext):
     parameters = f"Возраст: {age}, Вес: {weight}, Уровень: {level}"
 
     await message.answer(f"Подождите пожалуйста...", reply_markup=ReplyKeyboardRemove())
-    response = await generate_training_program(model, goal, parameters)
+    response = generate_training_program(model, goal, parameters)
 
     await message.answer(f"Сгенерированная тренировка:\n{response}\n\n Устраивает ли вас ответ?", reply_markup=get_yes_or_no_keyboard())
     await state.set_state(TrainingProgramStates.confirm_train_state)
@@ -187,20 +187,20 @@ async def generate_diet(message: types.Message, state: FSMContext):
     parameters = f"Возраст: {age}, Вес: {weight}, Уровень: {level}"
 
     await message.answer(f"Подождите пожалуйста...", reply_markup=ReplyKeyboardRemove())
-    response = await generate_diet_program(model, goal, parameters)
+    response = generate_diet_program(model, goal, parameters)
 
     await message.answer(f"Сгенерированный план питания: {response}\n\n Устраивает ли вас ответ?", reply_markup=get_yes_or_no_keyboard())
 
     await state.set_state(TrainingProgramStates.confirm_diet_state)
   elif message.text == "Нет":
-    await message.answer("Рад был помочь!", reply_markup=get_menu_keyboard())
+    await message.answer("Рад был помочь! Однако помните, что приведенные мною советы носят лишь рекомендательный характер. Перед практическим применением проконсультируйтесь с врачом.", reply_markup=get_menu_keyboard())
     await state.clear()
     
 
 @router.message(TrainingProgramStates.confirm_diet_state)
 async def confirm_diet(message: types.Message, state: FSMContext):
   if message.text == "Да":
-    await message.answer("Отлично, был рад помочь!", reply_markup=get_menu_keyboard())
+    await message.answer("Отлично, был рад помочь! Однако помните, что приведенные мною советы носят лишь рекомендательный характер. Перед практическим применением проконсультируйтесь с врачом.", reply_markup=get_menu_keyboard())
     await state.clear()
   elif message.text == "Нет":
     await retry_generate(message, state, generate_diet_program, TrainingProgramStates.confirm_diet_state)

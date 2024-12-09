@@ -16,4 +16,4 @@ llama_config:
   temperature: 0.7 # Controls randomness of the generations
   top_p: 0.9 # Fraction of the most likely next words to sample from
   frequency_penalty: 0.0 # Penalizes new tokens based on their existing frequency in the text so far
-  presence_penalty: 0.6 # Punishes the repetition of words based on their frequency
+  presence_penalty: 1.2 # Punishes the repetition of words based on their frequency

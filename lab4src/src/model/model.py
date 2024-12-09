@@ -20,7 +20,7 @@ load_dotenv()
 HF_TOKEN: str = os.getenv('HUGGING_FACE_SECOND_TOKEN')
 
 
-async def translate_result_to_ru(result: str):
+def translate_result_to_ru(result: str):
   sentences = re.split(r'(?<=[.!?])\s+', result)
   translated_sentences = []
 
@@ -37,7 +37,7 @@ async def translate_result_to_ru(result: str):
   return result_ru
 
 
-async def generate_by_falcon(prompt: str):
+def generate_by_falcon(prompt: str):
   """
   Start answer generation with falcon
 
@@ -63,11 +63,11 @@ async def generate_by_falcon(prompt: str):
 
     print("\nFALCON GENERATION COMPLETED\n")
 
-    result_ru: str = await translate_result_to_ru(result)
+    result_ru: str = translate_result_to_ru(result)
     return result_ru
 
 
-async def generate_by_llama(prompt: str):
+def generate_by_llama(prompt: str):
   """
   Start answer generation with llama
 
@@ -85,6 +85,8 @@ async def generate_by_llama(prompt: str):
       "content": prompt_en
     }
   ]
+
+  print(f"{prompt_en}\n\n")
 
   print("\nLLAMA GENERATION STARTED\n")
 
@@ -106,11 +108,11 @@ async def generate_by_llama(prompt: str):
 
   formatted_result = cleaned_result.replace("\\n", "\n")
 
-  result_ru: str = await translate_result_to_ru(formatted_result)
+  result_ru: str = translate_result_to_ru(formatted_result)
   return result_ru
 
 
-async def generate_training_program(model: str, goal: str, parameters: str) -> str:
+def generate_training_program(model: str, goal: str, parameters: str) -> str:
   """
   Getting training program
 
@@ -120,16 +122,16 @@ async def generate_training_program(model: str, goal: str, parameters: str) -> s
   """
   prompt = f"Составь тренировочную программу для {goal}.\nПараметры пользователя: {parameters}\n"
   if model == "FALCON": 
-    result = await generate_by_falcon(prompt)
+    result = generate_by_falcon(prompt)
 
     return result
   elif model == "LLaMA":
-    result = await generate_by_llama(prompt)
+    result = generate_by_llama(prompt)
 
     return result
     
 
-async def generate_diet_program(model: str, goal: str, parameters: str) -> str:
+def generate_diet_program(model: str, goal: str, parameters: str) -> str:
   """
   Getting diet program
 
@@ -140,11 +142,11 @@ async def generate_diet_program(model: str, goal: str, parameters: str) -> str:
   prompt: str = f"Составь рацион для {goal}.\nПараметры пользователя: {parameters}\n"
 
   if model == "FALCON": 
-    result = await generate_by_falcon(prompt)
+    result = generate_by_falcon(prompt)
 
     return result
     
   elif model == "LLaMA":
-    result = await generate_by_llama(prompt)
+    result = generate_by_llama(prompt)
 
     return result
